@@ -25,6 +25,7 @@ simplelang/
 ├── ast_nodes.py      # AST node class definitions
 ├── interpreter.py    # Tree-walking evaluator (executes the AST)
 ├── main.py           # CLI entry point
+├── web_ui.py         # Local browser playground (code box + run + output)
 └── examples/
     ├── fizzbuzz.sl       # Classic FizzBuzz 1-20
     ├── factorial.sl      # Factorial of 10 via while loop
@@ -41,6 +42,20 @@ python main.py examples/fizzbuzz.sl
 python main.py examples/factorial.sl
 python main.py examples/fibonacci.sl
 ```
+
+## Web playground
+
+A small local web UI is included for writing and running SimpleLang code in
+the browser, with no external dependencies (stdlib only).
+
+```bash
+python web_ui.py        # serves on http://127.0.0.1:5000 and opens it
+python web_ui.py 8080    # or pick a different port
+```
+
+It gives you a code box and an output panel — write `.sl` code, hit **Run**
+(or Ctrl/Cmd + Enter), and see `print(...)` output or lexer/parser/runtime
+errors right there.
 
 ## Language reference
 
