@@ -11,6 +11,7 @@ Then open http://localhost:<port> in a browser. No external dependencies
 import html
 import io
 import json
+import os
 import re
 import sys
 import webbrowser
@@ -457,14 +458,16 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 5000
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    url = f"http://127.0.0.1:{port}"
+    port = int(os.environ.get("PORT", sys.argv[1] if len(sys.argv) > 1 else 5000))
+    host = "0.0.0.0" if "PORT" in os.environ else "127.0.0.1"
+    server = ThreadingHTTPServer((host, port), Handler)
+    url = f"http://{host}:{port}"
     print(f"SimpleLang Playground running at {url}  (Ctrl+C to stop)")
-    try:
-        webbrowser.open(url)
-    except Exception:
-        pass
+    if host == "127.0.0.1":
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:
