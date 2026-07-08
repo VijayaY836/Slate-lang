@@ -3,10 +3,11 @@ interpreter.py - Tree-walking interpreter for SimpleLang.
 """
 
 from ast_nodes import (
-    Program, VarDecl, Assign, Print, Block, If, While, For, ExprStmt,
+    Program, VarDecl, Assign, Print, Block, If, While, For, ForIn,
+    RepeatTimes, ExprStmt,
     Literal, Var, BinOp, Logical, UnaryOp,
     FuncDecl, Return, Break, Continue, IndexAssign,
-    ArrayLiteral, Index, Call,
+    ArrayLiteral, Index, Call, TemplateStr,
 )
 
 
@@ -176,6 +177,49 @@ class Interpreter:
             if node.update is not None:
                 self.execute(node.update, loop_env)
 
+    def exec_ForIn(self, node, env):
+        loop_env = Environment(parent=env)
+        start = self.evaluate(node.start, loop_env)
+        end = self.evaluate(node.end, loop_env)
+        self._check_number(start, node.line)
+        self._check_number(end, node.line)
+
+        if node.step is not None:
+            step = self.evaluate(node.step, loop_env)
+            self._check_number(step, node.line)
+            if step == 0:
+                raise RuntimeErrorSL(f"Runtime error on line {node.line}: step cannot be 0")
+        else:
+            step = 1
+
+        i = start
+        while (step > 0 and i <= end) or (step < 0 and i >= end):
+            loop_env.define(node.var_name, i)
+            try:
+                self.execute(node.body, loop_env)
+            except BreakException:
+                break
+            except ContinueException:
+                pass
+            i += step
+
+    def exec_RepeatTimes(self, node, env):
+        loop_env = Environment(parent=env)
+        count = self.evaluate(node.count, loop_env)
+        self._check_number(count, node.line)
+        count = int(count)
+        i = 0
+        while i < count:
+            if node.var_name is not None:
+                loop_env.define(node.var_name, i)
+            try:
+                self.execute(node.body, loop_env)
+            except BreakException:
+                break
+            except ContinueException:
+                pass
+            i += 1
+
     def exec_ExprStmt(self, node, env):
         self.evaluate(node.expr, env)
 
@@ -215,6 +259,9 @@ class Interpreter:
 
     def eval_Var(self, node, env):
         return env.get(node.name, node.line)
+
+    def eval_TemplateStr(self, node, env):
+        return "".join(stringify(self.evaluate(p, env)) for p in node.parts)
 
     def eval_ArrayLiteral(self, node, env):
         return [self.evaluate(e, env) for e in node.elements]

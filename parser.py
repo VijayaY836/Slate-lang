@@ -4,14 +4,17 @@ parser.py - Recursive-descent parser for SimpleLang.
 Grammar (informal):
 
     program     := statement* EOF
-    statement   := varDecl | assign | ifStmt | whileStmt | forStmt
-                 | printStmt | block | exprStmt
+    statement   := varDecl | assign | ifStmt | unlessStmt | whileStmt
+                 | repeatStmt | forStmt | printStmt | block | exprStmt
     varDecl     := 'let' IDENT '=' expr ';'
     assign      := IDENT '=' expr ';'
     printStmt   := 'print' '(' expr (',' expr)* ')' ';'
     ifStmt      := 'if' '(' expr ')' block ('else' (ifStmt | block))?
+    unlessStmt  := 'unless' '(' expr ')' block ('else' (ifStmt | block))?
     whileStmt   := 'while' '(' expr ')' block
+    repeatStmt  := 'repeat' expr 'times' ('as' IDENT)? block
     forStmt     := 'for' '(' (varDecl|assign)? ';' expr? ';' assign? ')' block
+                 | 'for' IDENT 'in' expr '..' expr ('step' expr)? block
     block       := '{' statement* '}'
     exprStmt    := expr ';'
 
@@ -25,11 +28,13 @@ Grammar (informal):
     primary     := NUMBER | STRING | 'true' | 'false' | IDENT | '(' expr ')'
 """
 
+from lexer import Lexer
 from ast_nodes import (
-    Program, VarDecl, Assign, Print, Block, If, While, For, ExprStmt,
+    Program, VarDecl, Assign, Print, Block, If, While, For, ForIn,
+    RepeatTimes, ExprStmt,
     Literal, Var, BinOp, Logical, UnaryOp,
     FuncDecl, Return, Break, Continue, IndexAssign,
-    ArrayLiteral, Index, Call,
+    ArrayLiteral, Index, Call, TemplateStr,
 )
 
 
@@ -54,6 +59,12 @@ class Parser:
         if value is not None and tok.value != value:
             return False
         return True
+
+    def peek_token(self, offset):
+        idx = self.pos + offset
+        if idx < len(self.tokens):
+            return self.tokens[idx]
+        return self.tokens[-1]
 
     def match(self, type_, value=None):
         if self.check(type_, value):
@@ -90,8 +101,12 @@ class Parser:
             return self.var_decl()
         if self.check("KEYWORD", "if"):
             return self.if_stmt()
+        if self.check("KEYWORD", "unless"):
+            return self.unless_stmt()
         if self.check("KEYWORD", "while"):
             return self.while_stmt()
+        if self.check("KEYWORD", "repeat"):
+            return self.repeat_stmt()
         if self.check("KEYWORD", "for"):
             return self.for_stmt()
         if self.check("KEYWORD", "print"):
@@ -208,6 +223,22 @@ class Parser:
                 else_block = self.block()
         return If(condition, then_block, else_block, line)
 
+    def unless_stmt(self):
+        """unless (cond) { ... } [else { ... }] -- sugar for `if (not cond)`."""
+        line = self.current().line
+        self.expect("KEYWORD", "unless")
+        self.expect("SYMBOL", "(")
+        condition = self.expr()
+        self.expect("SYMBOL", ")")
+        then_block = self.block()
+        else_block = None
+        if self.match("KEYWORD", "else"):
+            if self.check("KEYWORD", "if"):
+                else_block = self.if_stmt()
+            else:
+                else_block = self.block()
+        return If(UnaryOp("not", condition, line), then_block, else_block, line)
+
     def while_stmt(self):
         line = self.current().line
         self.expect("KEYWORD", "while")
@@ -217,9 +248,35 @@ class Parser:
         body = self.block()
         return While(condition, body, line)
 
+    def repeat_stmt(self):
+        """repeat <count> times [as name] { ... }"""
+        line = self.current().line
+        self.expect("KEYWORD", "repeat")
+        count = self.expr()
+        self.expect("KEYWORD", "times")
+        var_name = None
+        if self.match("KEYWORD", "as"):
+            var_name = self.expect("IDENT").value
+        body = self.block()
+        return RepeatTimes(count, var_name, body, line)
+
     def for_stmt(self):
         line = self.current().line
         self.expect("KEYWORD", "for")
+
+        # for name in start..end [step n] { ... }
+        if self.check("IDENT") and self.peek_token(1).type == "KEYWORD" and self.peek_token(1).value == "in":
+            var_name = self.advance().value
+            self.expect("KEYWORD", "in")
+            start = self.expr()
+            self.expect("SYMBOL", "..")
+            end = self.expr()
+            step = None
+            if self.match("KEYWORD", "step"):
+                step = self.expr()
+            body = self.block()
+            return ForIn(var_name, start, end, step, body, line)
+
         self.expect("SYMBOL", "(")
 
         init = None
@@ -336,6 +393,20 @@ class Parser:
         if tok.type == "STRING":
             self.advance()
             return Literal(tok.value)
+
+        if tok.type == "TEMPLATE":
+            self.advance()
+            segments = []
+            for kind, text in tok.value:
+                if kind == "str":
+                    if text != "":
+                        segments.append(Literal(text))
+                else:
+                    sub_tokens = Lexer(text).tokenize()
+                    segments.append(Parser(sub_tokens).expr())
+            if not segments:
+                segments.append(Literal(""))
+            return TemplateStr(segments, tok.line)
 
         if self.check("KEYWORD", "true"):
             self.advance()

@@ -5,11 +5,13 @@ A small interpreted programming language, written in Python, with:
 - Variables (`let`)
 - Arithmetic (`+ - * / %`) and comparison (`== != < > <= >=`) operators
 - Boolean logic (`and`, `or`, `not`)
-- Conditionals (`if` / `else if` / `else`)
-- Loops (`while` and C-style `for`), with `break` and `continue`
+- Conditionals (`if` / `else if` / `else`) and its mirror image, `unless`
+- Loops: `while`, C-style `for`, range-based `for i in 1..10 [step n]`,
+  and `repeat n times [as i]`, with `break` and `continue`
 - Functions with parameters and `return` values (recursion supported)
 - Arrays: literals `[1, 2, 3]`, indexing `arr[i]`, index assignment `arr[i] = v`,
   and builtins `len(arr)`, `push(arr, v)`, `pop(arr)`
+- Template strings: `` `Hello, ${name}!` `` for inline interpolation
 - `print(...)` for output
 - Comments with `#`
 
@@ -95,6 +97,16 @@ if (x > 10) {
 }
 ```
 
+`unless` is the negated form of `if`, for when it reads better than `if (not ...)`:
+
+```
+unless (x > 0) {
+    print("non-positive");
+} else {
+    print("positive");
+}
+```
+
 ### While loop
 
 ```
@@ -111,6 +123,35 @@ while (i < 5) {
 for (let i = 0; i < 10; i = i + 1) {
     print(i);
 }
+```
+
+### Range-based for...in
+
+Inclusive on both ends, defaults to a step of `1` (a descending range
+needs an explicit negative `step`, otherwise it runs zero times):
+
+```
+for i in 1..5 {
+    print(i);            # 1 2 3 4 5
+}
+for i in 10..0 step -2 {
+    print(i);            # 10 8 6 4 2 0
+}
+```
+
+### repeat...times
+
+```
+repeat 3 times as i {
+    print(`pass ${i}`);
+}
+```
+
+### Template strings
+
+```
+let name = "Slate";
+print(`Hello, ${name}! 2 + 2 = ${2 + 2}`);
 ```
 
 ### Print
@@ -166,28 +207,29 @@ while (i < 10) {
 ## Example: FizzBuzz (`examples/fizzbuzz.sl`)
 
 ```
-let i = 1;
-while (i <= 20) {
-    if (i % 15 == 0) {
+for i in 1..20 {
+    unless (i % 15 == 0 or i % 3 == 0 or i % 5 == 0) {
+        print(i);
+    } else if (i % 15 == 0) {
         print("FizzBuzz");
     } else if (i % 3 == 0) {
         print("Fizz");
-    } else if (i % 5 == 0) {
-        print("Buzz");
     } else {
-        print(i);
+        print("Buzz");
     }
-    i = i + 1;
 }
 ```
 
 ## Design notes
 
 - **Lexer** (`lexer.py`): hand-written scanner producing `Token(type, value, line)`
-  objects. Handles numbers, strings, identifiers/keywords, operators, and `#` comments.
+  objects. Handles numbers, strings, template strings (`` `...${expr}...` ``),
+  identifiers/keywords, operators, and `#` comments.
 - **Parser** (`parser.py`): recursive-descent parser with standard precedence
   climbing for expressions (`or/and` → `==/!=` → `</>/<=/>=` → `+/-` → `*/%//` → unary → primary).
-  `else if` is handled by recursively parsing another `if` statement as the else-branch.
+  `else if` is handled by recursively parsing another `if` statement as the else-branch,
+  and `unless` reuses the same `If` node with a negated condition. Each `${...}`
+  segment inside a template string is re-lexed and re-parsed as its own expression.
 - **Interpreter** (`interpreter.py`): tree-walking evaluator. Each block
   (`{ ... }`, loop bodies, `for`-loop scope) creates a new `Environment`
   chained to its parent, giving proper lexical scoping — a variable declared
@@ -198,7 +240,6 @@ while (i <= 20) {
 
 ## Possible extensions
 
-- Functions/procedures with parameters and return values
-- Arrays/lists and a `for-in` loop
-- `break` / `continue`
 - A REPL mode in `main.py`
+- Hash maps / objects
+- User-defined operators or a pipeline (`|>`) operator

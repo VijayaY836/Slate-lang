@@ -6,14 +6,15 @@ that the Parser can consume.
 """
 
 KEYWORDS = {
-    "let", "if", "else", "while", "for", "print",
+    "let", "if", "else", "unless", "while", "for", "in", "step",
+    "repeat", "times", "as", "print",
     "true", "false", "and", "or", "not",
     "func", "return", "break", "continue",
 }
 
 # Multi-character operators must be listed before their single-char prefixes
 SYMBOLS = [
-    "==", "!=", "<=", ">=",
+    "==", "!=", "<=", ">=", "..",
     "+", "-", "*", "/", "%",
     "=", "<", ">",
     "(", ")", "{", "}", "[", "]",
@@ -84,6 +85,11 @@ class Lexer:
                 tokens.append(self._read_string())
                 continue
 
+            # Template strings `...${expr}...`
+            if ch == "`":
+                tokens.append(self._read_template())
+                continue
+
             # Identifiers / keywords
             if ch.isalpha() or ch == "_":
                 tokens.append(self._read_ident())
@@ -141,6 +147,53 @@ class Lexer:
                 continue
             chars.append(self.advance())
         return Token("STRING", "".join(chars), start_line)
+
+    def _read_template(self):
+        """Reads a `...` template string into a Token whose value is a list
+        of ('str', text) / ('expr', source) segments. Anything inside
+        ${ ... } is kept as raw source text, to be lexed+parsed as an
+        expression later (see Parser.primary_base)."""
+        start_line = self.line
+        self.advance()  # consume opening backtick
+        parts = []
+        buf = []
+        while True:
+            if self.pos >= self.length:
+                self.error("Unterminated template string literal")
+            ch = self.peek()
+            if ch == "`":
+                self.advance()
+                break
+            if ch == "\\":
+                self.advance()
+                esc = self.advance()
+                mapping = {"n": "\n", "t": "\t", "`": "`", "\\": "\\", "$": "$"}
+                buf.append(mapping.get(esc, esc))
+                continue
+            if ch == "$" and self.peek(1) == "{":
+                parts.append(("str", "".join(buf)))
+                buf = []
+                self.advance()
+                self.advance()  # consume '${'
+                expr_chars = []
+                depth = 1
+                while True:
+                    if self.pos >= self.length:
+                        self.error("Unterminated ${...} inside template string")
+                    c = self.peek()
+                    if c == "{":
+                        depth += 1
+                    elif c == "}":
+                        depth -= 1
+                        if depth == 0:
+                            self.advance()
+                            break
+                    expr_chars.append(self.advance())
+                parts.append(("expr", "".join(expr_chars)))
+                continue
+            buf.append(self.advance())
+        parts.append(("str", "".join(buf)))
+        return Token("TEMPLATE", parts, start_line)
 
     def _read_ident(self):
         start_line = self.line

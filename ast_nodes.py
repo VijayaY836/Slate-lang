@@ -66,6 +66,24 @@ class For(Node):
         self.line = line
 
 
+class ForIn(Node):
+    def __init__(self, var_name, start, end, step, body, line):
+        self.var_name = var_name
+        self.start = start        # Expr
+        self.end = end            # Expr (inclusive)
+        self.step = step          # Expr or None (auto: +1 / -1)
+        self.body = body
+        self.line = line
+
+
+class RepeatTimes(Node):
+    def __init__(self, count, var_name, body, line):
+        self.count = count        # Expr
+        self.var_name = var_name  # str or None (0-indexed loop counter)
+        self.body = body
+        self.line = line
+
+
 class ExprStmt(Node):
     def __init__(self, expr):
         self.expr = expr
@@ -156,4 +174,10 @@ class Call(Node):
     def __init__(self, callee, args, line):
         self.callee = callee      # Var node (function name) in this language
         self.args = args          # list of Expr
+        self.line = line
+
+
+class TemplateStr(Node):
+    def __init__(self, parts, line):
+        self.parts = parts        # list of Expr; stringified and concatenated
         self.line = line

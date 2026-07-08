@@ -1,11 +1,9 @@
-# Compute the factorial of n using a while loop
+# Compute the factorial of n using a range-based for loop
 let n = 10;
 let result = 1;
-let i = 1;
 
-while (i <= n) {
+for i in 1..n {
     result = result * i;
-    i = i + 1;
 }
 
-print("Factorial of", n, "is", result);
+print(`Factorial of ${n} is ${result}`);

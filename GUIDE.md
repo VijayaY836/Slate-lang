@@ -61,6 +61,17 @@ and  or  not          # boolean logic
 
 `+` also joins strings: `"score: " + 10` → `"score: 10"`.
 
+For building strings out of multiple values, template strings are
+usually nicer than `+`-chains. Wrap the text in backticks and drop any
+expression inside `${...}`:
+
+```
+let name = "Vij";
+let age = 21;
+print(`${name} is ${age} years old`);   # Vij is 21 years old
+print(`next year: ${age + 1}`);          # next year: 22
+```
+
 ---
 
 ## 5. Conditions
@@ -78,6 +89,19 @@ if (x > 10) {
 
 The `else if` chain can be as long as you like; `else` is optional.
 
+`unless` is the mirror image of `if` — read it as "do this unless the
+condition holds" for cases where a negative check reads more naturally
+than `if (not ...)`:
+
+```
+let age = 15;
+unless (age >= 18) {
+    print("no entry");
+} else {
+    print("welcome");
+}
+```
+
 ---
 
 ## 6. Loops
@@ -92,11 +116,44 @@ while (i < 5) {
 }
 ```
 
-**for** — same idea, but the setup/condition/step live in one line:
+**for (classic)** — the setup/condition/step live in one line:
 
 ```
 for (let i = 0; i < 5; i = i + 1) {
     print(i);
+}
+```
+
+**for...in (range)** — the more expressive way to count. Ranges are
+inclusive on both ends and default to a step of `1`; if `end` is less
+than `start`, the loop simply runs zero times, unless you supply an
+explicit (negative) `step`:
+
+```
+for i in 1..5 {
+    print(i);            # 1 2 3 4 5
+}
+
+for i in 0..10 step 2 {
+    print(i);            # 0 2 4 6 8 10
+}
+
+for i in 5..1 step -1 {
+    print(i);            # 5 4 3 2 1 -- counting down
+}
+```
+
+**repeat...times** — for when you just need to do something N times
+and don't care about a loop variable (add `as name` if you do want a
+0-indexed counter):
+
+```
+repeat 3 times {
+    print("hi");
+}
+
+repeat 3 times as round {
+    print(`round ${round}`);
 }
 ```
 
@@ -179,18 +236,16 @@ print(vals);   # [2, 4, 6]
 ## 9. Putting it together — FizzBuzz
 
 ```
-let i = 1;
-while (i <= 20) {
-    if (i % 15 == 0) {
+for i in 1..20 {
+    unless (i % 15 == 0 or i % 3 == 0 or i % 5 == 0) {
+        print(i);
+    } else if (i % 15 == 0) {
         print("FizzBuzz");
     } else if (i % 3 == 0) {
         print("Fizz");
-    } else if (i % 5 == 0) {
-        print("Buzz");
     } else {
-        print(i);
+        print("Buzz");
     }
-    i = i + 1;
 }
 ```
 
@@ -205,6 +260,7 @@ while (i <= 20) {
 | Using a variable before declaring it | Declare with `let` before you read it |
 | Array index out of range | Check `len(arr)` first |
 | Mismatched function argument count | Call must pass exactly as many args as params |
+| `for i in 5..1 { ... }` runs zero times | Ranges default to step `1`; add `step -1` to count down |
 
 ---
 
@@ -212,9 +268,10 @@ while (i <= 20) {
 
 See the `examples/` folder:
 
-- `fizzbuzz.sl` — the classic
-- `factorial.sl` — factorial with a `while` loop
-- `fibonacci.sl` — Fibonacci sequence + a prime sieve
-- `features_demo.sl` — recursion, arrays, bubble sort, `break`/`continue`
+- `fizzbuzz.sl` — the classic, with a range `for...in` loop and `unless`
+- `factorial.sl` — factorial with a range `for...in` loop and a template string
+- `fibonacci.sl` — Fibonacci sequence + a prime sieve using `unless`
+- `features_demo.sl` — recursion, arrays, bubble sort, `repeat...times`,
+  template strings, `break`/`continue`
 
 Copy one, tweak it, and run it to see how things work.
