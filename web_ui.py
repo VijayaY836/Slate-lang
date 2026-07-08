@@ -114,15 +114,7 @@ def load_guide_html() -> str:
 
 GUIDE_HTML = load_guide_html()
 
-DEFAULT_CODE = """let n = 10;
-let result = 1;
-
-for i in 1..n {
-    result = result * i;
-}
-
-print(`Factorial of ${n} is ${result}`);
-"""
+DEFAULT_CODE = """# Enter your code. Refer to GUIDE for syntax"""
 
 PAGE = """<!doctype html>
 <html lang="en">
