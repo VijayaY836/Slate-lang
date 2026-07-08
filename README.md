@@ -26,7 +26,8 @@ pipeline, with no external dependencies (pure Python 3, standard library only).
 simplelang/
 ├── lexer.py        # Source code -> tokens
 ├── parser.py        # Tokens -> AST (recursive-descent parser)
-├── ast_nodes.py      # AST node class definitions
+├── ast_nodes.py    # AST node class definitions
+├── requirements.txt
 ├── interpreter.py    # Tree-walking evaluator (executes the AST)
 ├── main.py           # CLI entry point
 ├── web_ui.py         # Local browser playground (code box + run + output)
